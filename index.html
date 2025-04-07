@@ -243,113 +243,40 @@
             <p>Generating your image...</p>
         </div>
     </div>
-    <script>
-        async function generateImage() {
-            const apiKey = document.getElementById("apiKeyInput").value;
-            const prompt = document.getElementById("promptInput").value;
-            const negativePrompt = document.getElementById("negativePromptInput").value;
-            const outputDiv = document.getElementById("output");
-            const loadingDiv = document.getElementById("loading");
-            const generateButton = document.getElementById("generateButton");
-            const imageUpload = document.getElementById("imageUpload");
-            const styleRefImg = document.getElementById("styleRefImg");
-            const styleRefImgContent = document.getElementById("styleRefImgContent");
-            if (!apiKey.trim()) {
-                alert("Please enter your Replicate API key.");
-                return;
-            }
-            if (!prompt.trim()) {
-                alert("Please enter a prompt before generating an image.");
-                return;
-            }
-            outputDiv.innerHTML = "";
-            loadingDiv.classList.add("show");
-            generateButton.disabled = true;
-            let styleRefUrl = null;
-            if (imageUpload.files && imageUpload.files[0]) {
-                const file = imageUpload.files[0];
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    styleRefUrl = reader.result;
-                    try {
-                        console.log("Sending request with image:", styleRefUrl ? "Yes" : "No");
-                        const response = await fetch("https://api.replicate.com/v1/predictions", {
-                            method: "POST",
-                            headers: {
-                                "Authorization": `Token ${apiKey}`,
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                                version: "db21e45c67b8c2e4c576f6e131e40c8cf6eaa9fc17e6ff9f7c1d6a3e0e1703c7",
-                                input: {
-                                    prompt: `${prompt} | negative prompt: ${negativePrompt}`,
-                                    image: styleRefUrl ? styleRefUrl : null,
-                                }
-                            })
-                        });
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            console.error("Replicate API error:", response.status, errorText);
-                            throw new Error(`HTTP error! Status: ${response.status}, ${errorText}`);
-                        }
-                        const result = await response.json();
-                        console.log("Replicate API response:", result);
-                        if (result && result.urls && result.urls.get) {
-                            let prediction;
-                            while (!prediction || prediction.status !== "succeeded") {
-                                console.log("Polling for prediction status...");
-                                const pollResponse = await fetch(result.urls.get, {
-                                    headers: { "Authorization": `Token ${apiKey}` }
-                                });
-                                if (!pollResponse.ok) {
-                                    const pollErrorText = await pollResponse.text();
-                                    console.error("Replicate API error (polling):", pollResponse.status, pollErrorText);
-                                    throw new Error(`HTTP error! Status: ${pollResponse.status}, ${pollErrorText} (Polling)`);
-                                }
-                                prediction = await pollResponse.json();
-                                console.log("Prediction status:", prediction.status);
-                                if (prediction.status === "succeeded") {
-                                    const imageUrl = prediction.output[0];
-                                    console.log("Image URL:", imageUrl);
-                                    const imgElement = document.createElement("img");
-                                    imgElement.src = imageUrl;
-                                    imgElement.alt = "Generated image";
-                                    outputDiv.appendChild(imgElement);
-                                    outputDiv.classList.add("show");
-                                    loadingDiv.classList.remove("show");
-                                    generateButton.disabled = false;
-                                    break;
-                                } else if (prediction.status === "failed") {
-                                    outputDiv.innerHTML = "Generation failed. Try again.";
-                                    loadingDiv.classList.remove("show");
-                                    generateButton.disabled = false;
-                                    break;
-                                }
-                                await new Promise(r => setTimeout(r, 1500));
-                            }
-                        } else {
-                            outputDiv.innerHTML = "Something went wrong. Please check your prompt or API key.";
-                            loadingDiv.classList.remove("show");
-                            generateButton.disabled = false;
-                        }
-                    } catch (error) {
-                        console.error("Error:", error);
-                        outputDiv.innerHTML = `An error occurred: ${error.message}. Please check your prompt and API key.`;
-                        loadingDiv.classList.remove("show");
-                        generateButton.disabled = false;
-                    } finally {
-                        URL.revokeObjectURL(styleRefUrl);
-                    }
-                }
-                reader.readAsDataURL(file);
-                styleRefImgContent.onload = () => {
-                    URL.revokeObjectURL(styleRefUrl);
-                }
-                styleRefImg.style.display = "block";
-                styleRefImgContent.src = URL.createObjectURL(file);
-            } else {
+<script>
+    async function generateImage() {
+        const apiKey = document.getElementById("apiKeyInput").value;
+        const prompt = document.getElementById("promptInput").value;
+        const negativePrompt = document.getElementById("negativePromptInput").value;
+        const outputDiv = document.getElementById("output");
+        const loadingDiv = document.getElementById("loading");
+        const generateButton = document.getElementById("generateButton");
+        const imageUpload = document.getElementById("imageUpload");
+        const styleRefImg = document.getElementById("styleRefImg");
+        const styleRefImgContent = document.getElementById("styleRefImgContent");
+
+        if (!apiKey.trim()) {
+            alert("Please enter your Replicate API key.");
+            return;
+        }
+        if (!prompt.trim()) {
+            alert("Please enter a prompt before generating an image.");
+            return;
+        }
+        
+        outputDiv.innerHTML = "";
+        loadingDiv.classList.add("show");
+        generateButton.disabled = true;
+
+        let styleRefUrl = null;
+
+        if (imageUpload.files && imageUpload.files[0]) {
+            const file = imageUpload.files[0];
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                styleRefUrl = reader.result;
+
                 try {
-                    console.log("Sending request without image");
                     const response = await fetch("https://api.replicate.com/v1/predictions", {
                         method: "POST",
                         headers: {
@@ -360,77 +287,114 @@
                             version: "db21e45c67b8c2e4c576f6e131e40c8cf6eaa9fc17e6ff9f7c1d6a3e0e1703c7",
                             input: {
                                 prompt: `${prompt} | negative prompt: ${negativePrompt}`,
+                                image: styleRefUrl ? styleRefUrl : null,
                             }
                         })
                     });
+
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Replicate API error:", response.status, errorText);
-                        throw new Error(`HTTP error! Status: ${response.status}, ${errorText}`);
+                        throw new Error("API error, please check your API key or try again later.");
                     }
+
                     const result = await response.json();
-                    console.log("Replicate API response:", result);
                     if (result && result.urls && result.urls.get) {
-                        let prediction;
-                        while (!prediction || prediction.status !== "succeeded") {
-                            console.log("Polling for prediction status...");
-                            const pollResponse = await fetch(result.urls.get, {
-                                headers: { "Authorization": `Token ${apiKey}` }
-                            });
-                            if (!pollResponse.ok) {
-                                const pollErrorText = await pollResponse.text();
-                                console.error("Replicate API error (polling):", pollResponse.status, pollErrorText);
-                                throw new Error(`HTTP error! Status: ${pollResponse.status}, ${pollErrorText} (Polling)`);
-                            }
-                            prediction = await pollResponse.json();
-                            console.log("Prediction status:", prediction.status);
-                            if (prediction.status === "succeeded") {
-                                const imageUrl = prediction.output[0];
-                                console.log("Image URL:", imageUrl);
-                                const imgElement = document.createElement("img");
-                                imgElement.src = imageUrl;
-                                imgElement.alt = "Generated image";
-                                outputDiv.appendChild(imgElement);
-                                outputDiv.classList.add("show");
-                                loadingDiv.classList.remove("show");
-                                generateButton.disabled = false;
-                                break;
-                            } else if (prediction.status === "failed") {
-                                outputDiv.innerHTML = "Generation failed. Try again.";
-                                loadingDiv.classList.remove("show");
-                                generateButton.disabled = false;
-                                break;
-                            }
-                            await new Promise(r => setTimeout(r, 1500));
-                        }
+                        await pollForPrediction(result.urls.get, apiKey);
                     } else {
-                        outputDiv.innerHTML = "Something went wrong. Please check your prompt or API key.";
+                        outputDiv.innerHTML = "Unexpected error. No image URL returned.";
                         loadingDiv.classList.remove("show");
                         generateButton.disabled = false;
                     }
                 } catch (error) {
-                    console.error("Error:", error);
-                    outputDiv.innerHTML = `An error occurred: ${error.message}. Please check your prompt and API key.`;
+                    outputDiv.innerHTML = `An error occurred: ${error.message}`;
                     loadingDiv.classList.remove("show");
                     generateButton.disabled = false;
                 }
+            };
+            reader.readAsDataURL(file);
+            styleRefImgContent.onload = () => {
+                URL.revokeObjectURL(styleRefUrl);
+            };
+            styleRefImg.style.display = "block";
+            styleRefImgContent.src = URL.createObjectURL(file);
+        } else {
+            try {
+                const response = await fetch("https://api.replicate.com/v1/predictions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Token ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        version: "db21e45c67b8c2e4c576f6e131e40c8cf6eaa9fc17e6ff9f7c1d6a3e0e1703c7",
+                        input: {
+                            prompt: `${prompt} | negative prompt: ${negativePrompt}`,
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("API error, please check your API key or try again later.");
+                }
+
+                const result = await response.json();
+                if (result && result.urls && result.urls.get) {
+                    await pollForPrediction(result.urls.get, apiKey);
+                } else {
+                    outputDiv.innerHTML = "Unexpected error. No image URL returned.";
+                    loadingDiv.classList.remove("show");
+                    generateButton.disabled = false;
+                }
+            } catch (error) {
+                outputDiv.innerHTML = `An error occurred: ${error.message}`;
+                loadingDiv.classList.remove("show");
+                generateButton.disabled = false;
             }
         }
-        document.getElementById('imageUpload').addEventListener('change', function(e) {
-            const styleRefImg = document.getElementById('styleRefImg');
-            const styleRefImgContent = document.getElementById('styleRefImgContent');
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    styleRefImgContent.src = e.target.result;
-                    styleRefImg.style.display = "block";
+    }
+
+    async function pollForPrediction(pollUrl, apiKey) {
+        const outputDiv = document.getElementById("output");
+        const loadingDiv = document.getElementById("loading");
+        const generateButton = document.getElementById("generateButton");
+
+        let prediction;
+        while (!prediction || prediction.status !== "succeeded") {
+            try {
+                const pollResponse = await fetch(pollUrl, {
+                    headers: { "Authorization": `Token ${apiKey}` }
+                });
+
+                if (!pollResponse.ok) {
+                    throw new Error("Polling error, please try again later.");
                 }
-                reader.readAsDataURL(e.target.files[0]);
-            } else {
-                styleRefImg.style.display = "none";
-                styleRefImgContent.src = "";
+
+                prediction = await pollResponse.json();
+                if (prediction.status === "succeeded") {
+                    const imageUrl = prediction.output[0];
+                    const imgElement = document.createElement("img");
+                    imgElement.src = imageUrl;
+                    imgElement.alt = "Generated image";
+                    outputDiv.appendChild(imgElement);
+                    outputDiv.classList.add("show");
+                    loadingDiv.classList.remove("show");
+                    generateButton.disabled = false;
+                    break;
+                } else if (prediction.status === "failed") {
+                    outputDiv.innerHTML = "Image generation failed. Please try again.";
+                    loadingDiv.classList.remove("show");
+                    generateButton.disabled = false;
+                    break;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Wait before polling again
+            } catch (error) {
+                outputDiv.innerHTML = `Error during polling: ${error.message}`;
+                loadingDiv.classList.remove("show");
+                generateButton.disabled = false;
+                break;
             }
-        });
-    </script>
+        }
+    }
+</script>
 </body>
 </html>
